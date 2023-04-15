@@ -2,6 +2,7 @@ package pt.unl.fct.di.apdc.firstwebapp.resources;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.datastore.*;
+
 import com.google.gson.Gson;
 import pt.unl.fct.di.apdc.firstwebapp.util.AuthToken;
 import pt.unl.fct.di.apdc.firstwebapp.util.LoginData;
@@ -18,7 +19,9 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 @Path("/listUser")
@@ -44,30 +47,73 @@ public class ListinigResource {
         } catch (IOException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity("Token inválido " + e).build();
         }
-        Key userKey = userKeyFactory.newKey(token.getUsername());// perguntar o pq do stor so ter
-        // posto o userKeyfactory
-        LOG.warning(String.valueOf(userKey));
+        if (token.isExpired()) {
+
+            permissions.deleteToken(token.tokenID,token.username);
+            return Response.status(Response.Status.UNAUTHORIZED).entity("Token expirado").build();
+        }
+        Key userKey = userKeyFactory.newKey(token.getUsername());
         Entity user = datastore.get(userKey);
+
         if (user == null) {
             LOG.warning("User not found");
             return Response.status(Response.Status.FORBIDDEN).build();
         }
 
+        String role = user.getString("user_role").toUpperCase();
 
         List<Entity> allowedUsers = new ArrayList<>();
-        LoginData.UserRole userRole = LoginData.UserRole.valueOf(user.getString("role")) ;
+        LoginData.UserRole userRole = LoginData.UserRole.valueOf(role) ;
+
         EntityQuery query = Query.newEntityQueryBuilder().setKind("User").build();
         QueryResults<com.google.cloud.datastore.Entity> results = datastore.run(query);
 
-        for (QueryResults<com.google.cloud.datastore.Entity> it = results; it.hasNext(); ) {
-            com.google.cloud.datastore.Entity user2 = it.next();
+        if(role.equals("USER")) {
+            StructuredQuery.Filter roleFilter = StructuredQuery.PropertyFilter.eq("user_role", "USER");
+            StructuredQuery.Filter profileFilter = StructuredQuery.PropertyFilter.eq("user_perfil", "PUBLICO");
+            StructuredQuery.Filter stateFilter = StructuredQuery.PropertyFilter.eq("user_state", "ATIVO");
+            StructuredQuery.CompositeFilter compositeFilter = StructuredQuery.CompositeFilter.and(roleFilter, profileFilter, stateFilter);
 
-            LoginData.UserRole targetRole = LoginData.UserRole.valueOf(user2.getString("role"));
 
-            if (permissions.canSeeUser(targetRole, userRole)) allowedUsers.add(user2);
+            Query<Entity> query2 = Query.newEntityQueryBuilder()
+                    .setKind("User")
+                    .setFilter(compositeFilter)
+                    .build();
+            QueryResults<Entity> results2 = datastore.run(query);
+
+            List<Map<String, String>> users = new ArrayList<>();
+            while (results2.hasNext()) {
+                Entity entity = results2.next();
+
+                String username = String.valueOf(entity.getKey().getName());
+
+                String email = entity.getString("user_email");
+                String name = entity.getString("user_name");
+
+                Map<String, String> userAlt = new HashMap<>();
+                userAlt.put("username", username);
+                userAlt.put("email", email);
+                userAlt.put("name", name);
+
+                users.add(userAlt);
+
+            }
+            String jsonResponse = g.toJson(users);
+
+            return Response.ok(jsonResponse).build();
+        }else{
+
+            for (QueryResults<com.google.cloud.datastore.Entity> it = results; it.hasNext(); ) {
+                com.google.cloud.datastore.Entity user2 = it.next();
+                String userRoleTarget = user2.getString("user_role").toUpperCase();
+
+                LoginData.UserRole targetRole = LoginData.UserRole.valueOf(userRoleTarget);
+
+                if (permissions.canSeeUser(targetRole, userRole)) allowedUsers.add(user2);
+            }
+            String jsonResponse = g.toJson(allowedUsers);
+            return Response.ok(jsonResponse).build();
         }
-        String jsonResponse = g.toJson(allowedUsers);;
-        return Response.ok(jsonResponse).build();
     }
 
 }

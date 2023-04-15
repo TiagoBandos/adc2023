@@ -1,19 +1,19 @@
-package pt.unl.fct.di.apdc.firstwebapp.resources;
+package pt.unl.fct.di.apdc.firstwebapp.util;
 
 public class ChangePasswordData {
     public String currentPassword;
     public String newPassword;
     public String confirmPassword;
-    public String username;
+
 
     public ChangePasswordData() {
     }
 
-    public ChangePasswordData(String currentPassword, String newPassword, String confirmPassword, String username) {
+    public ChangePasswordData(String currentPassword, String newPassword, String confirmPassword ) {
         this.currentPassword = currentPassword;
         this.newPassword = newPassword;
         this.confirmPassword = confirmPassword;
-        this.username = username;
+
     }
 
     public String getCurrentPassword() {
@@ -40,12 +40,6 @@ public class ChangePasswordData {
         this.confirmPassword = confirmPassword;
     }
 
-    public String getUsername() {
-        return username;
-    }
 
-    public void setUsername(String username) {
-        this.username = username;
-    }
     // Adicione métodos getter e setter se necessário
 }

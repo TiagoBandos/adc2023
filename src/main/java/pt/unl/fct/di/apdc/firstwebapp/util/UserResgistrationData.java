@@ -6,10 +6,17 @@ public class UserResgistrationData {
         private String email;
         private String name;
         private String password;
+        private String perfil;
 
+    public String getPerfil() {
+        return perfil;
+    }
 
+    public void setPerfil(String perfil) {
+        this.perfil = perfil;
+    }
 
-        private String confirmPassword;
+    private String confirmPassword;
         // Adicione os atributos opcionais aqui
 
         // Construtor, getters e setters para os atributos
